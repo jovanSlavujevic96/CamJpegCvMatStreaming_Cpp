@@ -1,36 +1,40 @@
 /* Receiver/client multicast Datagram example. */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include "utils.h"
 
-#include <unistd.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <memory.h>
-
-#include <opencv2/opencv.hpp>
-
 #include <cstdint>
 
-#include "utils.h"
+#include <opencv2/opencv.hpp>
 
 int main(int argc, char **argv)
 {
     /* socket variables */
     struct sockaddr_in localSock;
     struct ip_mreq group;
-    int sd = -1;
+    SOCKET sd = INVALID_SOCKET;
+    int localSockLen = sizeof(localSock);
 
     /* OpenCV variables */
     cv::Mat img;
     std::vector<uchar> streaming_frame;
 
+#ifdef WIN
+    WSADATA wsd;
+    if (WSAStartup(MAKEWORD(1, 1), &wsd) != 0)
+    {
+        printf("WSAStartup failed\n");
+        return -1;
+    }
+#endif //WIN
+
     /* Create a datagram socket on which to receive. */
     sd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(sd < 0)
+#ifdef WIN
+    if(sd == INVALID_SOCKET)
+#else 
+    if (sd <= INVALID_SOCKET)
+#endif
     {
         perror("Opening datagram socket error");
         exit(1);
@@ -45,7 +49,7 @@ int main(int argc, char **argv)
         if(setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) < 0)
         {
             perror("Setting SO_REUSEADDR error");
-            close(sd);
+            _CloseSocket(sd);
             exit(1);
         }
         else
@@ -64,7 +68,7 @@ int main(int argc, char **argv)
     if(bind(sd, (struct sockaddr*)&localSock, sizeof(localSock)))
     {
         perror("Binding datagram socket error");
-        close(sd);
+        _CloseSocket(sd);
         exit(1);
     }
     else
@@ -78,10 +82,10 @@ int main(int argc, char **argv)
     /* datagrams are to be received. */
     group.imr_multiaddr.s_addr = inet_addr(MULTICAST_IPV4);
     group.imr_interface.s_addr = INADDR_ANY;
-    if(setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group)) < 0)
+    if(setsockopt(sd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&group, sizeof(localSock)) < 0)
     {
         perror("Adding multicast group error");
-        close(sd);
+        _CloseSocket(sd);
         exit(1);
     }
     else
@@ -95,7 +99,7 @@ int main(int argc, char **argv)
         /* set size to max udp payload size */
         streaming_frame.resize(MAX_UDP_PAYLOAD_SIZE);
         /* get frame from streaming server */
-        if ((bytes = read(sd, streaming_frame.data(), MAX_UDP_PAYLOAD_SIZE)) < 0)
+        if ((bytes = recvfrom(sd, (char*)streaming_frame.data(), MAX_UDP_PAYLOAD_SIZE, 0, (struct sockaddr*)&localSock, &localSockLen)) < 0)
         {
             perror("Receiving datagram message error");
             break;
@@ -109,6 +113,6 @@ int main(int argc, char **argv)
         /* show image */
         cv::imshow("received", img);
     }
-    close(sd);
+    _CloseSocket(sd);
     return 0;
 }

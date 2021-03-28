@@ -1,29 +1,19 @@
 /* Send Multicast Datagram code example. */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include "utils.h"
 
-#include <unistd.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <memory.h>
 #include <string.h>
-
-#include <opencv2/opencv.hpp>
-
 #include <cstdint>
 #include <vector>
 
-#include "utils.h"
+#include <opencv2/opencv.hpp>
 
 int main (int argc, char** argv)
 {
     struct in_addr localInterface;
     struct sockaddr_in groupSock;
-    int sd = -1;
+    SOCKET sd = INVALID_SOCKET;
     
     /** OpenCV variables */
     cv::VideoCapture cap;
@@ -32,15 +22,28 @@ int main (int argc, char** argv)
     std::vector<uchar> streaming_buffer;
 
     /* try to open default camera */
-    if(!cap.open(0))
+    if(!cap.open(0, cv::CAP_DSHOW))
     {
         return 1;
     }
 
-    /* Create a datagram socket on which to send/receive. */
-    if((sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) 
+#ifdef WIN
+    WSADATA wsd;
+    if (WSAStartup(MAKEWORD(1, 1), &wsd) != 0)
     {
-        perror("Opening datagram socket error");
+        printf("WSAStartup failed\n");
+        return -1;
+    }
+#endif //WIN
+
+    /* Create a datagram socket on which to send/receive. */
+#ifdef WIN
+    if( (sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET)
+#else
+    if ((sd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) <= INVALID_SOCKET)
+#endif
+    {
+        _PrintSocketError("Opening datagram socket error");
         return 1;
     } 
     else
@@ -54,8 +57,8 @@ int main (int argc, char** argv)
         int32_t reuse = 1;
         if(setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) < 0)
         {
-            perror("Setting SO_REUSEADDR error");
-            close(sd);
+            _PrintSocketError("Setting SO_REUSEADDR error");
+            _CloseSocket(sd);
             exit(1);
         }
         else
@@ -74,10 +77,11 @@ int main (int argc, char** argv)
     /* The IP address specified must be associated with a local, */
     /* multicast capable interface. */
     memset(&localInterface, 0, sizeof(localInterface));
-    localInterface.s_addr = INADDR_ANY;
+    inet_pton(AF_INET, MULTICAST_IPV4, &groupSock.sin_addr);
     if(setsockopt(sd, IPPROTO_IP, IP_MULTICAST_IF, (char *)&localInterface, sizeof(localInterface)) < 0)
     {
-        perror("Setting local interface error");
+        _PrintSocketError("Setting local interface error");
+        _CloseSocket(sd);
         exit(1);
     }
     else
@@ -97,12 +101,12 @@ int main (int argc, char** argv)
         {
             break;
         }
-        else if(sendto(sd, streaming_buffer.data(), streaming_buffer.size(), 0, (struct sockaddr*)&groupSock, sizeof(groupSock)) < 0) /* send compressed package */ 
+        else if(sendto(sd, (const char*)streaming_buffer.data(), (int)streaming_buffer.size(), 0, (struct sockaddr*)&groupSock, sizeof(groupSock)) < 0) /* send compressed package */
         {
-            perror("Sending datagram message error");
+            _PrintSocketError("Sending datagram message error");
             break;
         }
     }
-    close(sd);
+    _CloseSocket(sd);
     return 0;
 }

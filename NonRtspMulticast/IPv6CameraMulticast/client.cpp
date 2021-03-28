@@ -1,38 +1,41 @@
 /* Send Multicast Datagram code example. */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include "utils.h"
 
-#include <unistd.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <memory.h>
 #include <string.h>
-
-#include <opencv2/opencv.hpp>
-
 #include <cstdint>
 #include <vector>
 #include <iostream>
 
-#include "utils.h"
+#include <opencv2/opencv.hpp>
 
 int main(int argc, char const *argv[]) 
 {
     /* socket variables */
     struct sockaddr_in6 localSock;
     struct ipv6_mreq group;
-    int sd = -1;
+    SOCKET sd = INVALID_SOCKET;
 
     /* OpenCV variables */
     cv::Mat img;
     std::vector<uchar> streaming_frame;
 
+#ifdef WIN
+    WSADATA wsd;
+    if (WSAStartup(MAKEWORD(1, 1), &wsd) != 0)
+    {
+        printf("WSAStartup failed\n");
+        return -1;
+}
+#endif //WIN
+
     /* Create a datagram socket on which to send/receive. */
-    if((sd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) 
+#ifdef WIN
+        if ((sd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET)
+#else
+        if ((sd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)) <= INVALID_SOCKET)
+#endif
     {
         perror("Opening datagram socket error");
         return 1;
@@ -49,7 +52,7 @@ int main(int argc, char const *argv[])
         if(setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) < 0)
         {
             perror("Setting SO_REUSEADDR error");
-            close(sd);
+            _CloseSocket(sd);
             return 1;
         } 
         else 
@@ -67,7 +70,7 @@ int main(int argc, char const *argv[])
     if(bind(sd, (sockaddr*)&localSock, sizeof(localSock))) 
     {
         perror("Binding datagram socket error");
-        close(sd);
+        _CloseSocket(sd);
         return 1;
     } 
     else 
@@ -82,10 +85,10 @@ int main(int argc, char const *argv[])
     inet_pton (AF_INET6, MULTICAST_IPv6 , &group.ipv6mr_multiaddr.s6_addr);
     group.ipv6mr_interface = *(unsigned int*)&in6addr_any;
 
-    if(setsockopt(sd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &group, sizeof(group))) 
+    if(setsockopt(sd, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, (const char*)&group, sizeof(group))) 
     {
         perror("Adding multicast group error");
-        close(sd);
+        _CloseSocket(sd);
         return 1;
     } 
     else 
@@ -99,7 +102,7 @@ int main(int argc, char const *argv[])
         /* set size to max udp payload size */
         streaming_frame.resize(MAX_UDP_PAYLOAD_SIZE);
         /* get frame from streaming server */
-        if ((bytes = read(sd, streaming_frame.data(), MAX_UDP_PAYLOAD_SIZE)) < 0)
+        if ((bytes = recv(sd, (char*)streaming_frame.data(), MAX_UDP_PAYLOAD_SIZE, 0)) < 0)
         {
             perror("Receiving datagram message error");
             break;
@@ -113,6 +116,6 @@ int main(int argc, char const *argv[])
         /* show image */
         cv::imshow("received", img);
     }
-    close(sd);
+    _CloseSocket(sd);
     return 0;
 }

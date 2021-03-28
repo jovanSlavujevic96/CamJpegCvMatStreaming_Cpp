@@ -1,5 +1,11 @@
 add_executable(clientIPV6 client.cpp)
 target_link_libraries(clientIPV6 PUBLIC ${OpenCV_LIBS})
+if (MSVC)
+	target_compile_definitions(clientIPV6 PUBLIC -DWIN)
+endif (MSVC)
 
 add_executable(serverIPV6 server.cpp)
 target_link_libraries(serverIPV6 PUBLIC ${OpenCV_LIBS})
+if (MSVC)
+	target_compile_definitions(serverIPV6 PUBLIC -DWIN)
+endif (MSVC)
