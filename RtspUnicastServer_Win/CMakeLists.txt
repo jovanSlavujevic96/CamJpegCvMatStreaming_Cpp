@@ -1,34 +1,21 @@
-cmake_minimum_required (VERSION 3.8)
-project (RtspServer)
+project (RtspUnicastServer_Win)
 
-set(CMAKE_MODULE_PATH "$ENV{OPENCV_DIR};${CMAKE_MODULE_PATH}")
-find_package( OpenCV CONFIG REQUIRED )
-
-set(CMAKE_BUILD_TYPE "Release")
-
-include_directories( 
-	"${CMAKE_CURRENT_SOURCE_DIR}/include"
+file(GLOB RTSP_UCAST_SRV_HEADER_FILES 
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
 )
 
-add_library(libRtsp STATIC
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/CRtspMaster.cc"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/CRtspClientHandler.cc"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/CRtspSession.cc"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/CStreamer.cc"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/CException.cc"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/CJpegSample.cc"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/CWebcamCvSample.cc"
- )
- target_include_directories(libRtsp PUBLIC
-	"${OpenCV_INCLUDE_DIRS}"
- )
-  target_link_libraries(libRtsp PUBLIC
-	"${OpenCV_LIBS}"
- )
+file(GLOB RTSP_UCAST_SRV_SRC_FILES 
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc"
+)
 
-add_executable(RtspStreamer 
-	"${CMAKE_CURRENT_SOURCE_DIR}/main.cc"
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+add_library(RtspUnicastServer STATIC 
+	"${RTSP_UCAST_SRV_HEADER_FILES}"
+	"${RTSP_UCAST_SRV_SRC_FILES}"
 )
-target_link_libraries(RtspStreamer PUBLIC 
-	libRtsp
-)
+
+add_executable(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/main.cc")
+target_link_libraries(${PROJECT_NAME} PRIVATE RtspUnicastServer)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "opencv2/opencv.hpp"
+#include <opencv2/opencv.hpp>
 
 #include "CException.h"
 #include "CSampleModel.h"
@@ -8,8 +8,8 @@
 class CWebcamCvSample : public CSampleModel
 {
 public:
-	CWebcamCvSample() throw(CException);
-	CWebcamCvSample(uint8_t index) throw(CException);
+	CWebcamCvSample() noexcept(false); // throw(CException)
+	CWebcamCvSample(uint8_t index) noexcept(false); // throw(CException)
 	~CWebcamCvSample();
 
 	void readFromWebcam(bool display);

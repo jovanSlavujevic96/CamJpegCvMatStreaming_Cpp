@@ -1,6 +1,6 @@
 #include "CWebcamCvSample.h"
 
-CWebcamCvSample::CWebcamCvSample() throw(CException) :
+CWebcamCvSample::CWebcamCvSample() noexcept(false) :
 	m_CompressParam{ cv::IMWRITE_JPEG_QUALITY, 50 }
 {
 	if (!m_CameraCapture.open(0, cv::CAP_DSHOW))
@@ -9,7 +9,7 @@ CWebcamCvSample::CWebcamCvSample() throw(CException) :
 	}
 }
 
-CWebcamCvSample::CWebcamCvSample(uint8_t index) throw(CException) :
+CWebcamCvSample::CWebcamCvSample(uint8_t index) noexcept(false) :
 	m_CompressParam{ cv::IMWRITE_JPEG_QUALITY, 50 }
 {
 	if (!m_CameraCapture.open(index, cv::CAP_DSHOW))
