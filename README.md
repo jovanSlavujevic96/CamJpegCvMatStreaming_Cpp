@@ -1,1 +1,1 @@
-# CameraSocketStreaming_Cpp
+# CamJpegCvMatStreaming_Cpp
